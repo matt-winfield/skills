@@ -86,14 +86,7 @@ git push
 npx skills add matt-winfield/skills -g -s <name> -y
 ```
 
-### Convert to symlink layout
-
-`npx skills` defaults to **copy** when only one agent is targeted (no `--symlink` flag exists; the prompt only fires with multiple agents). To match the rest of the symlink-managed skills:
-
-```bash
-mv ~/.claude/skills/<name> ~/.agents/skills/<name>
-ln -s ../../.agents/skills/<name> ~/.claude/skills/<name>
-```
+**Don't pass `-a claude-code`.** With a single agent target, `npx skills` silently falls back to copying files into `~/.claude/skills/`. Omitting `-a` installs for all agents, which triggers the multi-target path and symlinks `~/.claude/skills/<name>` → `~/.agents/skills/<name>` — matching the rest of the symlink-managed skills.
 
 Don't forget to also update the README table in `~/dev/skills/README.md`.
 
