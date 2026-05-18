@@ -1,19 +1,13 @@
 # skills
 
-Personal collection of [agent skills](https://github.com/anthropics/skills) for [Claude Code](https://claude.com/claude-code) and other agents that follow the same convention.
+Personal collection of agent skills for AI agents that follow the skills specification.
 
 ## Install
 
-Install all skills globally for Claude Code:
+Install skills globally
 
 ```bash
-npx skills add matt-winfield/skills -g -a claude-code -s '*' -y
-```
-
-Or pick specific skills:
-
-```bash
-npx skills add matt-winfield/skills -g -a claude-code -s cleanup-worktrees
+npx skills add matt-winfield/skills -g
 ```
 
 Update later with:
