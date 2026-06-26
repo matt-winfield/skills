@@ -19,23 +19,25 @@ Then `gh pr create` with a short title (<70 chars) and a body covering **Summary
 
 ## 2. Watch CI and comments
 
-Poll both in parallel. Prefer Monitor for the CI watch so each status change is a notification rather than a poll loop:
+Run **one persistent Monitor** that emits a single line per new event covering both CI and comments, so you're notified instead of polling. Use the ready recipe and stop it with TaskStop when the PR is done:
 
-```bash
-# CI: streams a line per check transition
-gh pr checks <pr> --watch
+```
+Monitor(
+  command: "bash <skill>/scripts/watch-pr.sh <owner/repo> <pr>",
+  persistent: true,
+  description: "PR <pr>: CI + comments + review findings",
+)
 ```
 
-For comments, poll on a slow cadence (90–180s) — there's no streaming endpoint:
+`scripts/watch-pr.sh` is built to avoid the five ways this watch usually goes wrong — read the header before adapting it. The traps, in order of how often they bite:
 
-```bash
-gh pr view <pr> --json reviews,comments,reviewThreads \
-  --jq '{reviews: [.reviews[] | {author: .author.login, state, body, submittedAt}],
-         comments: [.comments[] | {author: .author.login, body, createdAt}],
-         threads: [.reviewThreads[] | select(.isResolved == false) | {path: .path, line: .line, comments: [.comments[] | {author: .author.login, body}]}]}'
-```
+- **Comments hide in THREE endpoints, not one.** `issues/<pr>/comments` (conversation), `pulls/<pr>/comments` (inline, in-diff), **and `pulls/<pr>/reviews` (review *bodies*)**. CodeRabbit's "Outside diff range", "Duplicate comments", and "Actionable comments posted: N" findings live **only in the review body** — they are in no comment endpoint. Polling just comments silently drops them; this is the number-one cause of "you missed a comment." A `gh pr view --json reviews,comments,reviewThreads` one-shot does capture all three, but lacks the dedup/priming below.
+- **Bot summaries re-render on every push.** CodeRabbit edits one summary comment each push, so naive `?since=` polling re-fires it forever. Dedup by `id + updated_at` (so an edit that *adds* findings still fires), and only surface bot summaries/reviews matching a findings pattern (`Outside diff|Duplicate comments|Actionable comments posted: [1-9]`) — humans always pass through.
+- **Prime on the first pass.** On startup, record existing items as seen *without emitting*, or a restart replays the whole history as "new."
+- **Emit failures, not just passes.** Surface `fail`/`cancel` checks and a completion summary too — silence must never be mistakable for success.
+- **macOS ships bash 3.2** (no `declare -A`). Track the "seen" set as a delimited string, not an associative array, or a check name with spaces ("Build and Validate") breaks it.
 
-Track which comments / thread IDs you've already addressed so you don't loop on the same feedback.
+Each emitted line is a notification: `CI <bucket>: <name>`, `CI COMPLETE: …`, `COMMENT <user>: …`, `REVIEW <user> [file:line]: …`, `REVIEW-SUMMARY <user>: …`. Keep your own running set of comment/thread IDs you've already addressed so you don't loop on the same feedback.
 
 ## 3. Fix CI failures
 
