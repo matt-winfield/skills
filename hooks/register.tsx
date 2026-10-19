@@ -1,5 +1,5 @@
 import { atom, read, update } from 'claude-code'
-import type { EngineInterface, Register, SessionRateLimit } from 'claude-code'
+import type { EngineInterface, Register, RenderNode, SessionRateLimit } from 'claude-code'
 
 import type { Limit } from '../types'
 
@@ -18,6 +18,13 @@ const windowsOf = (rateLimits: readonly SessionRateLimit[]): Limit[] =>
     const found = rateLimits.find(limit => limit.kind === kind)
     return found ? [{ kind, percentUsed: found.percentUsed, resetsAt: found.resetsAt }] : []
   })
+
+/** Whether a drawing beneath shows nothing: no text, no control (the engine's own node is empty). */
+function isBlank (node: RenderNode | undefined): boolean {
+  if (node === undefined || node === null) return true
+  if (typeof node === 'string') return node.trim() === ''
+  return (node.type === 'Box' || node.type === 'Text') && (node.children ?? []).every(isBlank)
+}
 
 const colorFor = (percent: number) => (percent >= 90 ? 'error' : percent >= 75 ? 'warning' : 'claude')
 
@@ -67,8 +74,9 @@ export const register: Register = (on, options) => {
     const hasReset = resetsIn !== undefined && resetsIn <= 0
     const percent = hasReset ? 0 : shown.percentUsed
     const filled = Math.round((Math.min(Math.max(percent, 0), 100) / 100) * CELLS)
-    // The engine's own labels (and any other plugin's) stay as drawn, before the meter.
-    const labels = e.props.modes.length > 0 ? await next(e) : null
+    // The engine's own labels, and what any other plugin draws there (a switch), stay as drawn, before the meter.
+    const beneath = await next(e)
+    const labels = e.props.modes.length > 0 || !isBlank(beneath) ? beneath : null
     const { Box, Text } = $.ui.resolve(e)
 
     return (

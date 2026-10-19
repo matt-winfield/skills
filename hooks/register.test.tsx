@@ -66,6 +66,20 @@ test("keeps the engine's mode labels before the meter", async ($, on) => {
   expect(await ui.find({ type: 'Text', text: '5h ' })).toBeDefined()
 })
 
+test("keeps another plugin's drawing there before the meter, with no mode labels", async ($, on) => {
+  // Beneath the meter: another plugin's switch, where the engine has no labels to draw.
+  on('ui.render', { component: 'SessionMode' }, ($, e) => {
+    const { Text } = $.ui.resolve(e)
+    return <Text>{'⏵ narrator on'}</Text>
+  })
+  world(on)
+  await startSession($)
+  const ui = await footer($)
+  expect(await ui.find({ type: 'Text', text: '⏵ narrator on' })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: ' · ' })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: '5h ' })).toBeDefined()
+})
+
 test('off a subscription the engine draws its own footer', async ($, on) => {
   world(on, [])
   await startSession($)
