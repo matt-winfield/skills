@@ -8,7 +8,7 @@ const view = atom({ plugin: 'sub-meter', key: 'view' } as const, 0)
 
 const WINDOWS = ['five_hour', 'seven_day']
 const LABELS: Record<string, string> = { five_hour: '5h', seven_day: 'week' }
-const ROTATE_MS = 8000
+const ROTATE_SECONDS = 8
 const CELLS = 10
 const CYCLE_HINT = /\s*\([^()]+ to cycle\)/
 
@@ -46,6 +46,8 @@ async function remember ($: EngineInterface, found: Limit[]) {
 
 export const register: Register = (on, options) => {
   const hideCycleHint = options.hideCycleHint !== false
+  const rotateSeconds = Number(options.rotateSeconds)
+  const rotateMs = (rotateSeconds > 0 ? rotateSeconds : ROTATE_SECONDS) * 1000
 
   on('session.start', async ($, e, next) => {
     const saved = await $.store.get('limits')
@@ -54,7 +56,7 @@ export const register: Register = (on, options) => {
     const usage = await $.session.usage()
     await remember($, windowsOf(usage.rateLimits))
 
-    $.clock.every(ROTATE_MS, () => { void update($, view, n => n + 1) })
+    $.clock.every(rotateMs, () => { void update($, view, n => n + 1) })
     return next(e)
   })
 

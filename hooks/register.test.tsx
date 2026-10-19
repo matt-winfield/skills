@@ -57,6 +57,15 @@ test('takes turns with the weekly window', async ($, on) => {
   expect(await ui.find({ type: 'Text', text: ' · 3d 4h' })).toBeDefined()
 })
 
+test('takes turns as often as rotateSeconds says', { options: { rotateSeconds: 30 } }, async ($, on) => {
+  const w = world(on)
+  await startSession($)
+  await w.clock.advance(8000)
+  expect(await (await footer($)).find({ type: 'Text', text: '5h ' })).toBeDefined()
+  await w.clock.advance(22_000)
+  expect(await (await footer($)).find({ type: 'Text', text: 'week ' })).toBeDefined()
+})
+
 test("keeps the engine's mode labels before the meter", async ($, on) => {
   world(on)
   await startSession($)
