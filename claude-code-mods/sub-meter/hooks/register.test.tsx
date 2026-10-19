@@ -11,9 +11,39 @@ const LIMITS: SessionRateLimit[] = [
   { kind: 'seven_day', percentUsed: 23.5, resetsAt: at(76 * HOUR) }
 ]
 
-/** Everything beneath the mod: the clock, the store, the session's usage and what the engine draws. */
-function world (on: On, rateLimits: SessionRateLimit[] = LIMITS) {
+/** A transcript line of one model call, as Claude Code writes it. */
+const callLine = (id: string, at: number, usage: Record<string, number>, model = 'claude-opus-5-5') =>
+  JSON.stringify({ type: 'assistant', timestamp: new Date(at).toISOString(), message: { id, model, usage } })
+
+/**
+ * Everything beneath the mod: the clock, the store, the session's usage, what the engine draws,
+ * and the files under `~/.claude/projects` (by path, relative to it).
+ */
+function world (on: On, rateLimits: SessionRateLimit[] = LIMITS, files: Record<string, string> = {}) {
   const clock = mock.clock(on, { now: NOW })
+  const ROOT = '/home/me/.claude/projects'
+  on('env.get', ($, e) => ({ value: e.name === 'HOME' ? '/home/me' : undefined }))
+  on('fs.read', ($, e) => {
+    const text = files[e.path.slice(ROOT.length + 1)]
+    if (text === undefined) throw new Error(`ENOENT: ${e.path}`)
+    return { value: text }
+  })
+  on('fs.list', ($, e) => {
+    const prefix = e.path === ROOT ? '' : `${e.path.slice(ROOT.length + 1)}/`
+    if (!e.path.startsWith(ROOT)) throw new Error(`ENOENT: ${e.path}`)
+    const names = new Map<string, 'file' | 'dir'>()
+    for (const path of Object.keys(files)) {
+      if (!path.startsWith(prefix)) continue
+      const [name, ...more] = path.slice(prefix.length).split('/')
+      names.set(name!, more.length > 0 ? 'dir' : 'file')
+    }
+    if (names.size === 0) throw new Error(`ENOENT: ${e.path}`)
+    return {
+      value: [...names].map(([name, kind]) => ({
+        name, kind, isLink: false, size: kind === 'file' ? files[prefix + name]!.length : 0, mtimeMs: kind === 'file' ? clock.now() : 0
+      }))
+    }
+  })
   const store: Record<string, unknown> = {}
   on('store.get', ($, e) => ({ value: store[e.key] }))
   on('store.set', ($, e) => {
@@ -166,7 +196,7 @@ test('the pointer on the meter holds the switch, and shows the graph above it', 
   const ui = await fullscreen($)
   await ui.pointer({ type: 'enter', x: 0, y: 0, in: 'meter-hit' })
   expect(await ui.find({ key: 'graph' })).toBeDefined()
-  expect(await ui.find({ type: 'Text', text: /5h window · used per hour/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /Claude Code usage per hour/ })).toBeDefined()
   await w.clock.advance(60_000)
   expect(await ui.find({ type: 'Text', text: '5h ' })).toBeDefined()
 })
@@ -219,19 +249,33 @@ test('the graph follows the window shown: per day for the weekly one', async ($,
   await startSession($)
   const ui = await fullscreen($)
   await click(ui)
-  expect(await ui.find({ type: 'Text', text: /Weekly window · used per day/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /Claude Code usage per day/ })).toBeDefined()
 })
 
-test('the graph draws what was used between readings, and keeps the history', { options: { rotateSeconds: 3600 } }, async ($, on) => {
-  const w = world(on)
+test("the graph draws the transcripts' model calls, busiest hour full height", async ($, on) => {
+  const HOUR_MS = 3_600_000
+  const hourOf = (t: number) => String(new Date(t).getHours()).padStart(2, '0')
+  world(on, LIMITS, {
+    'project-a/one.jsonl': [
+      callLine('a', NOW - 3 * HOUR_MS, { input_tokens: 100, output_tokens: 1000 }),
+      // A streamed message is a line per content block: it counts once.
+      callLine('a', NOW - 3 * HOUR_MS, { input_tokens: 100, output_tokens: 1000 }),
+      '{"type":"user","message":{"content":"hi"}}'
+    ].join('\n'),
+    'project-a/one/subagents/agent-1.jsonl': callLine('b', NOW - 60_000, { input_tokens: 10, cache_read_input_tokens: 5000 })
+  })
   await startSession($)
-  await w.clock.advance(10 * 60_000)
-  await $.session.measure({ context: { window: 200_000 }, rateLimits: [{ ...LIMITS[0], percentUsed: 70 }, LIMITS[1]], changed: ['rateLimits'] } as never)
   const ui = await fullscreen($)
   await ui.pointer({ type: 'enter', x: 0, y: 0, in: 'meter-hit' })
-  // 58% then 70%: 12 points of the 5-hour window used in this hour.
-  expect(await ui.find({ type: 'Text', text: /total 12% · peak 12%/ })).toBeDefined()
-  // The current hour, last, is the tallest bar.
-  expect(await ui.find({ type: 'Text', text: /█ $/ })).toBeDefined()
-  expect((w.store.history as unknown[]).length).toBe(2)
+  expect(await ui.find({ type: 'Text', text: /Claude Code usage per hour/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: new RegExp(`busiest: ${hourOf(NOW - 3 * HOUR_MS)}:00`) })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /█/ })).toBeDefined()
+})
+
+test('with no transcripts the graph says there was no use', async ($, on) => {
+  world(on)
+  await startSession($)
+  const ui = await fullscreen($)
+  await ui.pointer({ type: 'enter', x: 0, y: 0, in: 'meter-hit' })
+  expect(await ui.find({ type: 'Text', text: /no use in the last 24 hours/ })).toBeDefined()
 })

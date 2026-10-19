@@ -1,13 +1,14 @@
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register, RenderElement, RenderNode, SessionRateLimit, Timer } from 'claude-code'
 
-import { bucketsFor, chartOf, isHistory, merge, sampleOf } from './history'
-import type { Limit, Sample } from '../types'
+import { bucketsFor, callsIn, chartOf, sinceFor } from './usage'
+import type { Call } from './usage'
+import type { Limit } from '../types'
 
 const limits = atom({ plugin: 'sub-meter', key: 'limits' } as const, [] as Limit[])
 const view = atom({ plugin: 'sub-meter', key: 'view' } as const, 0)
 const isHovered = atom({ plugin: 'sub-meter', key: 'isHovered' } as const, false)
-const history = atom({ plugin: 'sub-meter', key: 'history' } as const, [] as Sample[])
+const scannedAt = atom({ plugin: 'sub-meter', key: 'scannedAt' } as const, 0)
 
 const WINDOWS = ['five_hour', 'seven_day']
 const LABELS: Record<string, string> = { five_hour: '5h', seven_day: 'week' }
@@ -23,6 +24,10 @@ const MIN_RESUME_MS = 1000
 const HOVER_TIMEOUT_MS = 60_000
 // Under this many columns the graph packs its bars.
 const COMPACT_COLUMNS = 64
+// The transcripts are looked at again when the graph opens, at most this often; a file over what
+// one read takes is streamed instead.
+const RESCAN_MS = 30_000
+const MAX_READ_BYTES = 4 * 1024 * 1024
 
 /** The subscription windows the meter shows, in order, from what the engine measured. */
 const windowsOf = (rateLimits: readonly SessionRateLimit[]): Limit[] =>
@@ -49,20 +54,86 @@ function until (ms: number) {
   return `${Math.floor(hours / 24)}d ${hours % 24}h`
 }
 
-/**
- * Keeps the latest reading for the meter, and for the next session until a response reports
- * again; and adds it to the history the graph draws, with what other sessions stored since.
- */
+/** Keeps the latest reading for the meter, and for the next session until a response reports again. */
 async function remember ($: EngineInterface, found: Limit[]) {
   if (found.length === 0) return
   await update($, limits, () => found)
   await $.store.set('limits', found)
+}
 
+// The model calls of every transcript of the last week, by path, as last read; and the scan running.
+const transcripts = new Map<string, { mtimeMs: number; size: number; calls: Call[] }>()
+let scanning: Promise<void> | undefined
+let lastScan = -Infinity
+
+/** Where Claude Code keeps its session transcripts: one folder per project, a `.jsonl` per session. */
+async function projectsDir ($: EngineInterface) {
+  const config = await $.env.get('CLAUDE_CONFIG_DIR')
+  const home = (await $.env.get('HOME')) ?? (await $.env.get('USERPROFILE'))
+  const root = config ?? (home === undefined ? undefined : `${home}/.claude`)
+  return root === undefined ? undefined : `${root.replace(/[\\/]+$/, '')}/projects`
+}
+
+/** The model calls in one transcript: read at once, or streamed where it is bigger than a read takes. */
+async function callsOf ($: EngineInterface, path: string, size: number, since: number): Promise<Call[]> {
+  if (size < MAX_READ_BYTES) return callsIn(await $.fs.read(path), since)
+  const isWindows = (await $.env.get('OS')) === 'Windows_NT'
+  const calls: Call[] = []
+  let rest = ''
+  for await (const piece of $.process.spawn({ argv: isWindows ? ['cmd', '/c', 'type', path] : ['cat', path] })) {
+    if (piece.stream !== 'stdout') continue
+    const text = rest + piece.text
+    const end = text.lastIndexOf('\n')
+    rest = text.slice(end + 1)
+    if (end >= 0) calls.push(...callsIn(text.slice(0, end), since))
+  }
+  calls.push(...callsIn(rest, since))
+  return calls
+}
+
+/**
+ * Reads again the transcripts written to in the last week (each session's, and its subagents'),
+ * skipping those unchanged since the last look. Unreadable ones are left out.
+ */
+async function scan ($: EngineInterface) {
   const now = await $.clock.now()
-  const stored = await $.store.get('history')
-  const merged = merge(now, isHistory(stored) ? stored : [], await read($, history), [sampleOf(now, found)])
-  await update($, history, () => merged)
-  await $.store.set('history', merged)
+  if (scanning || now - lastScan < RESCAN_MS) return scanning
+  lastScan = now
+  scanning = (async () => {
+    const since = sinceFor('seven_day', now)
+    const root = await projectsDir($)
+    const seen = new Set<string>()
+    const look = async (path: string, mtimeMs: number, size: number) => {
+      seen.add(path)
+      const known = transcripts.get(path)
+      if (known && known.mtimeMs === mtimeMs && known.size === size) return
+      const calls = await callsOf($, path, size, since).catch(() => [])
+      transcripts.set(path, { mtimeMs, size, calls })
+    }
+    const list = (path: string) => $.fs.list(path).catch(() => [])
+    for (const project of root === undefined ? [] : await list(root)) {
+      if (project.kind !== 'dir') continue
+      const folder = `${root}/${project.name}`
+      for (const entry of await list(folder)) {
+        if (entry.kind !== 'file' || !entry.name.endsWith('.jsonl') || entry.mtimeMs < since) continue
+        await look(`${folder}/${entry.name}`, entry.mtimeMs, entry.size)
+        // A session's subagents write transcripts of their own, beside it.
+        const subagents = `${folder}/${entry.name.slice(0, -'.jsonl'.length)}/subagents`
+        for (const agent of await list(subagents)) {
+          if (agent.kind === 'file' && agent.name.endsWith('.jsonl') && agent.mtimeMs >= since) await look(`${subagents}/${agent.name}`, agent.mtimeMs, agent.size)
+        }
+      }
+    }
+    for (const path of transcripts.keys()) if (!seen.has(path)) transcripts.delete(path)
+    await update($, scannedAt, () => now)
+  })().finally(() => {
+    scanning = undefined
+  })
+  return scanning
+}
+
+function * allCalls () {
+  for (const { calls } of transcripts.values()) yield * calls
 }
 
 // The switch timer: when it is due, and, while it is paused, how long it had left.
@@ -114,7 +185,10 @@ async function point ($: EngineInterface, target: keyof typeof over, isOver: boo
     leaving = undefined
     silence = $.clock.after(HOVER_TIMEOUT_MS, () => { void unhover($) })
     await pause($)
-    if (!(await read($, isHovered))) await update($, isHovered, () => true)
+    if (!(await read($, isHovered))) {
+      await update($, isHovered, () => true)
+      void scan($).catch(() => undefined)
+    }
     return
   }
   leaving ??= $.clock.after(LEAVE_MS, () => {
@@ -138,21 +212,20 @@ export const register: Register = (on, options) => {
   pausedWith = undefined
   over.meter = false
   over.graph = false
+  transcripts.clear()
+  lastScan = -Infinity
 
   on('session.start', async ($, e, next) => {
     const saved = await $.store.get('limits')
     if (Array.isArray(saved)) await update($, limits, () => saved as Limit[])
-    const stored = await $.store.get('history')
-    if (isHistory(stored)) {
-      const kept = merge(await $.clock.now(), stored)
-      await update($, history, () => kept)
-    }
 
     const usage = await $.session.usage()
     await remember($, windowsOf(usage.rateLimits))
 
     await update($, isHovered, () => false)
     await schedule($, rotateMs)
+    // The graph's data, read ahead so it shows at once; the session does not wait on it.
+    if (e.isInteractive) void scan($).catch(() => undefined)
     return next(e)
   })
 
@@ -199,18 +272,14 @@ export const register: Register = (on, options) => {
     let graph: RenderElement | null = null
     if (Client && hovered) {
       const isCompact = (e.viewport?.columns ?? 80) < COMPACT_COLUMNS
-      const chart = chartOf(bucketsFor(await read($, history), shown.kind, now), shown.kind, isCompact)
+      await read($, scannedAt)
+      const chart = chartOf(bucketsFor(allCalls(), shown.kind, now), shown.kind, isCompact)
       const line = (text: string) => ` ${text} `
       graph = (
         <Box key="graph" position="absolute" bottom={1} right={0}>
           <Box flexDirection="column" borderStyle="round" borderColor="claude" flexShrink={0} width={chart.width + 4}>
             <Text bold>{line(chart.title)}</Text>
-            {chart.rows.map((row, i) => (
-              <Box key={`row-${i}`} flexDirection="row">
-                <Text dimColor> {row.gutter}</Text>
-                <Text color="claude">{row.bars} </Text>
-              </Box>
-            ))}
+            {chart.rows.map((row, i) => <Text key={`row-${i}`} color="claude">{line(row)}</Text>)}
             <Text dimColor>{line(chart.axis)}</Text>
             <Text dimColor>{line(chart.footer)}</Text>
           </Box>

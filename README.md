@@ -60,6 +60,6 @@ To try a mod from a local checkout without installing it, run `claude --plugin-d
 
 ### Mods
 
-| Name                                              | Description                                                                                                                                         |
-| ------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [sub-meter](claude-code-mods/sub-meter/README.md) | Subscription usage bar in the footer. Click it to switch between the 5h and weekly windows, hover it for a usage graph. Fork of midudev's Sub Meter. |
+| Name                                              | Description                                                                                                                                                              |
+| ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| [sub-meter](claude-code-mods/sub-meter/README.md) | Subscription usage bar in the footer. Click it to switch between the 5h and weekly windows, hover it for a graph of when usage was highest. Fork of midudev's Sub Meter. |
