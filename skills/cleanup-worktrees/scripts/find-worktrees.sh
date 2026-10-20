@@ -32,6 +32,16 @@ done
 git rev-parse --git-dir >/dev/null 2>&1 || { echo "Not in a git repository." >&2; exit 1; }
 here=$(git rev-parse --show-toplevel 2>/dev/null || true)
 
+fetched="not fetched"
+if (( fetch )); then
+  if git fetch --prune origin --quiet 2>/dev/null; then
+    fetched="fetched"
+    # The remote's default branch may have changed (a rename): record it again while online.
+    git remote set-head origin --auto >/dev/null 2>&1 || true
+  else
+    fetched="fetch failed, using local refs"
+  fi
+fi
 default=$(git symbolic-ref --short refs/remotes/origin/HEAD 2>/dev/null | sed 's|^origin/||' || true)
 # Without origin/HEAD, main or master when exactly one of them exists; both is ambiguous.
 if [[ -z "$default" ]]; then
@@ -42,10 +52,6 @@ if [[ -z "$default" ]]; then
   [[ "$found" == "main " || "$found" == "master " ]] && default="${found% }"
 fi
 [[ -n "$default" ]] || { echo "Can't tell the default branch: set it with git remote set-head origin --auto." >&2; exit 1; }
-fetched="not fetched"
-if (( fetch )); then
-  if git fetch --prune origin --quiet 2>/dev/null; then fetched="fetched"; else fetched="fetch failed, using local refs"; fi
-fi
 ref="origin/$default"
 git rev-parse --verify --quiet "$ref^{commit}" >/dev/null || ref="$default"
 git rev-parse --verify --quiet "$ref^{commit}" >/dev/null || { echo "No ref for the default branch ($default) found." >&2; exit 1; }
