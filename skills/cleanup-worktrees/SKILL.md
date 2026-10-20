@@ -39,7 +39,7 @@ bash <skill>/scripts/remove-worktrees.sh <path> <path> ...
 ```
 
 - It runs Paseo's `worktree.teardown` if there is one, removes each worktree, and deletes its branch only when no work is lost (otherwise it keeps the branch and says so).
-- It refuses a worktree with uncommitted changes. Add `--force` only for the ones the user picked knowing about those changes (STALE entries that list "uncommitted"). Run those in a separate call.
+- It refuses a worktree with uncommitted changes. Add `--force` only for the ones the user picked knowing about those changes (STALE entries that list "uncommitted"). Run those in a separate call. A locked worktree is never removed, even with `--force`: tell the user to `git worktree unlock` it first if they really mean it.
 - `--keep-branch` keeps the branches, if the user asks.
 
 Report the script's ✓/✗ lines in a short summary. For a ✗, say why, in its words.

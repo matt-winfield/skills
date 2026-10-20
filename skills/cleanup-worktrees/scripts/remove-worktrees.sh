@@ -2,8 +2,8 @@
 # Remove git worktrees, and their branches where that loses no work.
 #
 # Usage: remove-worktrees.sh [--force] [--keep-branch] <path>...
-#   --force        also remove worktrees with uncommitted changes or a lock
-#                  (that work is lost)
+#   --force        also remove worktrees with uncommitted changes (that work
+#                  is lost); a locked worktree is never removed: unlock it first
 #   --keep-branch  leave each worktree's branch in place
 #
 # For each path: runs Paseo's worktree.teardown (paseo.json) if there is one,
@@ -85,7 +85,8 @@ for target in "${targets[@]}"; do
   if [[ "$path" == "$here" ]]; then echo "✗ $path: this shell is in it; run from another worktree"; failed=1; continue; fi
   branch=$(branch_of "$path")
   args=(worktree remove)
-  (( force )) && args+=(--force --force)
+  # One --force discards changes; git needs a second to override a lock, which is never given.
+  (( force )) && args+=(--force)
 
   if [[ -d "$path" ]]; then
     steps=$(teardown_of "$path")
