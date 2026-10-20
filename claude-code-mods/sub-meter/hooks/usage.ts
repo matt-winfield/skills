@@ -125,25 +125,24 @@ export function bucketsFor (calls: Iterable<Call>, kind: string, now: number): B
 
 export type Chart = { title: string; rows: string[]; axis: string; footer: string; width: number }
 
-const ROWS = 6
 const LEVELS = ' ▁▂▃▄▅▆▇█'
 
 /**
  * The bar chart of the buckets, as rows of text the popover draws, every row as wide as the
  * chart so it paints over what is under it. The bars are relative: the busiest is full height.
- * `isCompact` packs them for a narrow terminal.
+ * `isCompact` packs them for a narrow terminal; `height` is how many rows the bars take.
  */
-export function chartOf (buckets: readonly Bucket[], kind: string, isCompact = false): Chart {
+export function chartOf (buckets: readonly Bucket[], kind: string, isCompact = false, height = 6): Chart {
   const isHours = kind === 'five_hour'
   const barWidth = isHours ? 1 : isCompact ? 3 : 5
   const gap = isHours ? (isCompact ? 0 : 1) : isCompact ? 1 : 2
   const width = buckets.length * barWidth + (buckets.length - 1) * gap
   const max = Math.max(...buckets.map(bucket => bucket.weight))
   const rows: string[] = []
-  for (let row = ROWS - 1; row >= 0; row--) {
+  for (let row = height - 1; row >= 0; row--) {
     const cells = buckets.map(bucket => {
       // Eighths of a row: a bar with any use shows at least the lowest one.
-      const eighths = bucket.weight > 0 ? Math.max(1, Math.round((bucket.weight / max) * ROWS * 8)) : 0
+      const eighths = bucket.weight > 0 ? Math.max(1, Math.round((bucket.weight / max) * height * 8)) : 0
       return LEVELS[Math.min(8, Math.max(0, eighths - row * 8))]!.repeat(barWidth)
     })
     rows.push(cells.join(' '.repeat(gap)))

@@ -15,15 +15,16 @@ const LABELS: Record<string, string> = { five_hour: '5h', seven_day: 'week' }
 const ROTATE_SECONDS = 8
 const CELLS = 10
 const CYCLE_HINT = /\s*\([^()]+ to cycle\)/
-// The pointer going from the meter up onto its graph leaves one before it enters the other: the
-// graph stays up this long after a leave. Off both for good, the switch timer resumes, with at
+// The pointer going from the meter up onto its graph, over the prompt box between them, leaves one
+// well before it enters the other: the graph stays up this long after a leave. Off both for good, the switch timer resumes, with at
 // least a second to go. A pointer that left the terminal says nothing: after a minute with no
 // word from it, the meter is no longer hovered.
-const LEAVE_MS = 250
+const LEAVE_MS = 700
 const MIN_RESUME_MS = 1000
 const HOVER_TIMEOUT_MS = 60_000
 // Under this many columns the graph packs its bars.
 const COMPACT_COLUMNS = 64
+const CHART_ROWS = 6
 // The transcripts are looked at again when the graph opens, at most this often; a file over what
 // one read takes is streamed instead.
 const RESCAN_MS = 30_000
@@ -269,27 +270,6 @@ export const register: Register = (on, options) => {
     const tail = resetsIn !== undefined && !hasReset ? ` · ${until(resetsIn)}` : ''
     const width = label.length + CELLS + ` ${Math.round(percent)}%`.length + tail.length
 
-    let graph: RenderElement | null = null
-    if (Client && hovered) {
-      const isCompact = (e.viewport?.columns ?? 80) < COMPACT_COLUMNS
-      await read($, scannedAt)
-      const chart = chartOf(bucketsFor(allCalls(), shown.kind, now), shown.kind, isCompact)
-      const line = (text: string) => ` ${text} `
-      graph = (
-        <Box key="graph" position="absolute" bottom={1} right={0}>
-          <Box flexDirection="column" borderStyle="round" borderColor="claude" flexShrink={0} width={chart.width + 4}>
-            <Text bold>{line(chart.title)}</Text>
-            {chart.rows.map((row, i) => <Text key={`row-${i}`} color="claude">{line(row)}</Text>)}
-            <Text dimColor>{line(chart.axis)}</Text>
-            <Text dimColor>{line(chart.footer)}</Text>
-          </Box>
-          <Box position="absolute" top={0} left={0}>
-            <Client key="graph-hit" module="./hit.tsx" width={chart.width + 4} height={chart.rows.length + 5} />
-          </Box>
-        </Box>
-      )
-    }
-
     return (
       <Box flexDirection="row">
         {labels}
@@ -307,7 +287,44 @@ export const register: Register = (on, options) => {
               </Box>
               )
             : null}
-          {graph}
+        </Box>
+      </Box>
+    )
+  })
+
+  // The graph, while the meter or the graph itself is hovered: in the band above the prompt, at its
+  // right end over the meter. The footer's own slot clips anything drawn above its row.
+  on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
+    const ui = $.ui.resolve(e)
+    if (!('Client' in ui) || e.viewport?.isFullscreen === false || e.props.hasSurvey || !(await read($, isHovered))) return next(e)
+    const all = await read($, limits)
+    if (all.length === 0) return next(e)
+
+    const shown = all[(await read($, view)) % all.length]!
+    const now = await $.clock.now()
+    await read($, scannedAt)
+    // The border and the title, axis and footer lines around the bars; and a space either side.
+    const rows = Math.max(2, Math.min(CHART_ROWS, e.props.maxRows - 5))
+    const isCompact = e.props.bodyColumns < COMPACT_COLUMNS
+    const chart = chartOf(bucketsFor(allCalls(), shown.kind, now), shown.kind, isCompact, rows)
+    const line = (text: string) => ` ${text} `
+    const { Box, Client, Text } = ui
+    const below: RenderElement = await next(e)
+    return (
+      <Box flexDirection="column">
+        {below}
+        <Box key="graph" flexDirection="row" justifyContent="flex-end">
+          <Box flexShrink={0}>
+            <Box flexDirection="column" borderStyle="round" borderColor="claude" flexShrink={0} width={chart.width + 4}>
+              <Text bold>{line(chart.title)}</Text>
+              {chart.rows.map((row, i) => <Text key={`row-${i}`} color="claude">{line(row)}</Text>)}
+              <Text dimColor>{line(chart.axis)}</Text>
+              <Text dimColor>{line(chart.footer)}</Text>
+            </Box>
+            <Box position="absolute" top={0} left={0}>
+              <Client key="graph-hit" module="./hit.tsx" width={chart.width + 4} height={chart.rows.length + 5} />
+            </Box>
+          </Box>
         </Box>
       </Box>
     )

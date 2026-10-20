@@ -28,7 +28,7 @@ While it is on, it also drops the `(shift+tab to cycle)` hint after the permissi
 ## What the fork adds
 
 - **Click to switch.** Clicking the meter (or its graph) switches between the 5-hour and the weekly window at once, and starts the switch timer over, so the window you picked stays up for a full `rotateSeconds`.
-- **Usage graph on hover.** With the pointer on the meter, a graph pops up above it:
+- **Usage graph on hover.** With the pointer on the meter, a graph pops up above the prompt box, at its right end over the meter:
   - showing the **5-hour** window, your usage in each of the last **24 hours**;
   - showing the **weekly** window, your usage on each of the last **7 days**.
 
@@ -76,7 +76,7 @@ The hooks module is [`hooks/register.tsx`](hooks/register.tsx). Reading and weig
 - The last reading is kept in `$.store`, so a new session shows it before its first response.
 - The graph's data is read with `$.fs.list` and `$.fs.read` from the transcripts changed in the last week. A file of 4 MiB or more, past what one read can take, is streamed through `cat` (`type` on Windows) with `$.process.spawn`. A message streamed as several lines, or copied into a resumed session's transcript, counts once by its message id.
 - A `ui.render` hook on `SessionMode` wraps what the engine draws there (its mode labels) and adds the meter after it.
-- Over the meter sits a `Client` (`hit.tsx`), an unpainted region that posts pointer enter, leave and click to the hooks module through `ui.message`. While hovered, the graph is drawn in an absolutely positioned box above the meter, with its own `Client` on top, so the pointer on the graph counts as hovering too.
+- Over the meter sits a `Client` (`hit.tsx`), an unpainted region that posts pointer enter, leave and click to the hooks module through `ui.message`. While hovered, a `ui.render` hook on `AbovePrompt` draws the graph in the band above the prompt box, with its own `Client` on top, so the pointer on the graph counts as hovering too. It isn't drawn from the footer's own slot because that slot clips anything above its row. The graph stays up for 0.7 seconds after the pointer leaves the meter, long enough to cross the prompt box onto it. On a short terminal it uses fewer rows of bars, and it gives way to a survey in the band.
 - The switch is a `$.clock.after` timer. It is cancelled on hover with its remaining time saved, rescheduled on leave, and reset by a click.
 - A `ui.render` hook on `PromptHint` rewrites the hint line without `(shift+tab to cycle)`. The engine still draws it, and the mode label before it.
 
