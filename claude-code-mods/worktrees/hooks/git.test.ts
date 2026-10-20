@@ -28,6 +28,7 @@ test('reads the porcelain list, main first, detached, locked and prunable', asyn
 test('leaves out a bare main repository', async () => {
   const found = parseWorktrees('worktree /repo.git\nbare\n\nworktree /w\nHEAD abc\nbranch refs/heads/x\n')
   expect(found.map(wt => wt.path)).toEqual(['/w'])
+  expect(found[0]).toMatchObject({ isMain: false })
 })
 
 test('finds the worktree a directory is in, the deepest first', async () => {

@@ -188,20 +188,20 @@ async function remove ($: EngineInterface, withBranch: boolean) {
   const waiting = await read($, confirm)
   const worktrees = await read($, list)
   const wt = worktrees.find(one => one.path === waiting?.path)
-  const main = worktrees.find(one => one.isMain)
+  // Git runs from the main checkout, or from the session's directory where the main repository is bare.
+  const cwd = worktrees.find(one => one.isMain)?.path ?? await $.session.cwd()
   await update($, confirm, () => null)
-  if (waiting === null || wt === undefined || main === undefined) return
+  if (waiting === null || wt === undefined) return
   const force = waiting.isForce ? (wt.isLocked ? ['--force', '--force'] : ['--force']) : []
-  const removed = wt.isPrunable
-    ? await git($, main.path, ['worktree', 'prune'])
-    : await git($, main.path, ['worktree', 'remove', ...force, wt.path])
+  // A worktree whose folder is gone is removed the same way, by its path: a prune would drop every missing one.
+  const removed = await git($, cwd, ['worktree', 'remove', ...force, wt.path])
   if (!removed.isOk) {
     await refresh($)
     return say($, `Not deleted: ${firstLine(removed.err)}`)
   }
   let text = `Deleted ${tildify(wt.path, await $.env.get('HOME'))}`
   if (withBranch && wt.branch !== undefined) {
-    const branch = await git($, main.path, ['branch', '-d', wt.branch])
+    const branch = await git($, cwd, ['branch', '-d', wt.branch])
     text += branch.isOk ? ` and branch ${wt.branch}` : `; kept branch ${wt.branch}: ${firstLine(branch.err)}`
   }
   await $.store.delete(`summary:${wt.path}`)

@@ -56,6 +56,8 @@ if git show-ref --verify --quiet "refs/heads/$branch"; then
 fi
 
 wt_root="${WORKTREE_ROOT:-$HOME/.worktrees}"
+mkdir -p "$wt_root/$repo"
+wt_root=$(cd "$wt_root" && pwd)
 path="$wt_root/$repo/$name"
 [[ ! -e "$path" ]] || { echo "$path already exists. Pick another --name." >&2; exit 1; }
 
@@ -72,7 +74,6 @@ if [[ -z "$base" ]]; then
   fi
 fi
 
-mkdir -p "$wt_root/$repo"
 echo "Creating $path on new branch $branch from $base"
 git worktree add --quiet --no-track -b "$branch" "$path" "$base"
 
@@ -171,7 +172,7 @@ fi
 # No worktree setup configured: install dependencies from whichever lockfile is there.
 if [[ -z "$ran" ]]; then
   install() {
-    if ! command -v "$1" >/dev/null 2>&1; then echo "Skipped $2 install: $1 is not installed." >&2; return 0; fi
+    if ! command -v "$1" >/dev/null 2>&1; then echo "Can't run the $2 install: $1 is not installed." >&2; return 1; fi
     run_lines "$2" "$3"
   }
   has() { [[ -f "$path/$1" ]]; }

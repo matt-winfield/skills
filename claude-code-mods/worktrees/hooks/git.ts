@@ -9,6 +9,8 @@ export type Listed = Omit<Worktree, 'isCurrent' | 'changes'>
  */
 export function parseWorktrees (porcelain: string): Listed[] {
   const found: Listed[] = []
+  // The main worktree is listed first, even when it is a bare repository that is itself left out.
+  let isFirst = true
   for (const block of porcelain.split(/\n\s*\n/)) {
     let path: string | undefined
     let head = ''
@@ -27,8 +29,11 @@ export function parseWorktrees (porcelain: string): Listed[] {
       else if (key === 'locked') isLocked = true
       else if (key === 'prunable') isPrunable = true
     }
-    if (path === undefined || isBare) continue
-    found.push({ path, head, branch, isMain: found.length === 0, isLocked, isPrunable })
+    if (path === undefined) continue
+    const isMain = isFirst
+    isFirst = false
+    if (isBare) continue
+    found.push({ path, head, branch, isMain, isLocked, isPrunable })
   }
   return found
 }

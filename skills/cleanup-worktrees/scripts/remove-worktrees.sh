@@ -84,6 +84,8 @@ for target in "${targets[@]}"; do
   if [[ "$path" == "$main" ]]; then echo "✗ $path: the main checkout is not removed"; failed=1; continue; fi
   if [[ "$path" == "$here" ]]; then echo "✗ $path: this shell is in it; run from another worktree"; failed=1; continue; fi
   branch=$(branch_of "$path")
+  args=(worktree remove)
+  (( force )) && args+=(--force --force)
 
   if [[ -d "$path" ]]; then
     steps=$(teardown_of "$path")
@@ -95,15 +97,12 @@ for target in "${targets[@]}"; do
           PASEO_BRANCH_NAME="$branch" bash -c "$line") || echo "  teardown step failed (going on): $line"
       done <<< "$steps"
     fi
-    args=(worktree remove)
-    (( force )) && args+=(--force --force)
-    if ! out=$(git -C "$main" "${args[@]}" "$path" 2>&1); then
-      echo "✗ $path: ${out#fatal: }"
-      failed=1
-      continue
-    fi
-  else
-    git -C "$main" worktree prune
+  fi
+  # A missing folder is removed by its path too: a prune would drop every missing worktree.
+  if ! out=$(git -C "$main" "${args[@]}" "$path" 2>&1); then
+    echo "✗ $path: $(printf '%s' "${out#fatal: }" | tr '\n' ' ' | sed 's/ *$//')"
+    failed=1
+    continue
   fi
   line="✓ removed $path"
 

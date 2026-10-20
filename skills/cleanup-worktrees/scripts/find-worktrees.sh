@@ -61,6 +61,10 @@ classify() {
   if (( is_main )); then skipped+=("$(short "$path")  [main checkout]"); return; fi
   if [[ "$path" == "$here" ]]; then skipped+=("$(short "$path")  [this worktree: run from another one to include it]"); return; fi
   local label="${branch:-detached ${head:0:7}}"
+  # A locked worktree may live on a drive that is not mounted now: its folder is missing but it is in use.
+  if (( locked )) && [[ ! -d "$path" ]]; then
+    add keep "$path" "$label" "-" "locked, folder not mounted"; return
+  fi
   if (( prunable )) || [[ ! -d "$path" ]]; then
     add safe "$path" "$label" "-" "folder is missing"; return
   fi

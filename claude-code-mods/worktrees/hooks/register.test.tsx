@@ -38,7 +38,8 @@ function world (on: On) {
     ] as Fake[],
     prompts: [] as string[],
     copied: [] as string[],
-    deletedBranches: [] as string[]
+    deletedBranches: [] as string[],
+    bareMain: false
   }
   const ok = (stdout = '') => ({ value: { exitCode: 0, stdout, stderr: '', isStdoutTruncated: false, isStderrTruncated: false } })
   const fail = (stderr: string) => ({ value: { exitCode: 1, stdout: '', stderr, isStdoutTruncated: false, isStderrTruncated: false } })
@@ -50,7 +51,8 @@ function world (on: On) {
     if (cmd !== 'git') return fail('not git')
     const line = args.join(' ')
     if (line === 'worktree list --porcelain') {
-      return ok(state.worktrees.map(wt => `worktree ${wt.path}\nHEAD 0123456789abcdef\nbranch refs/heads/${wt.branch}\n${wt.isLocked ? 'locked\n' : ''}`).join('\n'))
+      const bare = state.bareMain ? 'worktree /home/me/app.git\nbare\n\n' : ''
+      return ok(bare + state.worktrees.map(wt => `worktree ${wt.path}\nHEAD 0123456789abcdef\nbranch refs/heads/${wt.branch}\n${wt.isLocked ? 'locked\n' : ''}`).join('\n'))
     }
     if (line === 'status --porcelain') return here ? ok(here.changes) : fail('fatal: not a git repository')
     if (line === 'symbolic-ref --short refs/remotes/origin/HEAD') return ok('origin/main\n')
@@ -213,4 +215,19 @@ test('warns before force-deleting a worktree with uncommitted changes; cancel ke
   await ui.press({ key: 'remove' })
   expect(state.worktrees.map(wt => wt.path)).not.toContain('/home/me/app/.worktrees/login')
   expect(state.deletedBranches).toEqual([])
+})
+
+test('deletes a worktree when the main repository is bare', async ($, on) => {
+  const state = world(on)
+  state.bareMain = true
+  state.worktrees = state.worktrees.slice(1)
+  state.cwd = '/home/me/app/.worktrees/login'
+  await startSession($)
+  const ui = await showBand($)
+  // The first linked worktree is not taken for the main one.
+  expect(await ui.find({ type: 'Text', text: / \[here, 2 changed\]/ })).toBeDefined()
+  await ui.press({ key: 'row:/home/me/app/.worktrees/old' })
+  await ui.press({ key: 'delete' })
+  await ui.press({ key: 'remove' })
+  expect(state.worktrees.map(wt => wt.path)).toEqual(['/home/me/app/.worktrees/login'])
 })
