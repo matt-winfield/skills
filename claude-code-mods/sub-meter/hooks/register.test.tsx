@@ -236,6 +236,9 @@ test('the graph gives way to a survey, and fits a short band', async ($, on) => 
   // Of 8 rows, 5 are the border and the title, axis and footer lines: 3 rows of bars.
   const bars = (await short.findAll({ type: 'Text' })).filter(text => text.props.color === 'claude')
   expect(bars).toHaveLength(3)
+  // Too short for even one row of bars: no graph at all, rather than one taller than the band.
+  expect(await (await band($, { maxRows: 5 })).find({ key: 'graph' })).toBeUndefined()
+  expect(await (await band($, { maxRows: 6 })).find({ key: 'graph' })).toBeDefined()
 })
 
 test('the switch picks up where it was paused once the pointer leaves', async ($, on) => {

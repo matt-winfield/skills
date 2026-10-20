@@ -58,6 +58,8 @@ claude plugin update <mod>@matt-winfield-skills
 
 To try a mod from a local checkout without installing it, run `claude --plugin-dir ./claude-code-mods/<mod>`. Edits to it hot-reload.
 
+When changing a mod, bump its `version` in both its `.claude-plugin/plugin.json` and its entry in [`.claude-plugin/marketplace.json`](.claude-plugin/marketplace.json). `claude plugin update` installs a copy per version, so a change pushed without a new version reports "already at the latest version" and never reaches anyone who has the mod installed.
+
 ### Mods
 
 | Name                                              | Description                                                                                                                                                              |

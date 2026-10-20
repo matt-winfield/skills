@@ -1,6 +1,6 @@
 {
   "name": "sub-meter",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Your subscription usage at the bottom right of Claude Code: the 5-hour and weekly windows, as a bar that takes turns. In fullscreen, click it to switch and hover it for a usage graph. Fork of midudev/better-claude.",
   "author": {
     "name": "Matthew Winfield (fork of Miguel Ángel Durán (midudev))",

@@ -303,8 +303,10 @@ export const register: Register = (on, options) => {
     const shown = all[(await read($, view)) % all.length]!
     const now = await $.clock.now()
     await read($, scannedAt)
-    // The border and the title, axis and footer lines around the bars; and a space either side.
-    const rows = Math.max(2, Math.min(CHART_ROWS, e.props.maxRows - 5))
+    // The border and the title, axis and footer lines take 5 of the band's rows; with none left
+    // for a bar, there is no graph.
+    const rows = Math.min(CHART_ROWS, e.props.maxRows - 5)
+    if (rows < 1) return next(e)
     const isCompact = e.props.bodyColumns < COMPACT_COLUMNS
     const chart = chartOf(bucketsFor(allCalls(), shown.kind, now), shown.kind, isCompact, rows)
     const line = (text: string) => ` ${text} `
