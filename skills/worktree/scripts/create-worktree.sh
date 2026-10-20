@@ -32,11 +32,18 @@ done
 
 git rev-parse --git-dir >/dev/null 2>&1 || { echo "Not in a git repository." >&2; exit 1; }
 
-# The main checkout: the folder holding the shared .git directory.
+# The main checkout: the folder holding the shared .git directory. A bare repository has no
+# checkout of its own, so files are copied from this one instead.
 common=$(cd "$(git rev-parse --git-common-dir)" && pwd)
 root=$(dirname "$common")
 [[ "$(basename "$common")" == ".git" ]] || root=$(git rev-parse --show-toplevel)
-repo=$(basename "$root")
+# The repository's name: the folder holding .git, or for a bare repository the name of
+# app.git, or of the folder holding app/.bare, never the checkout's own folder (main).
+case "$(basename "$common")" in
+  .git) repo=$(basename "$(dirname "$common")") ;;
+  *.git) repo=$(basename "$common" .git) ;;
+  *) repo=$(basename "$(dirname "$common")") ;;
+esac
 
 slugify() { printf '%s' "$1" | tr '[:upper:]' '[:lower:]' | sed -e 's/[^a-z0-9]\{1,\}/-/g' -e 's/^-//' -e 's/-$//' | cut -c1-50; }
 
