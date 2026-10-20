@@ -1,0 +1,28 @@
+{
+  "name": "worktrees",
+  "version": "0.1.0",
+  "description": "Your repository's git worktrees in a band above the prompt (/worktrees): branch, folder and a short Haiku summary of each, with open here, copy path and delete.",
+  "author": {
+    "name": "Matthew Winfield",
+    "url": "https://github.com/matt-winfield"
+  },
+  "homepage": "https://github.com/matt-winfield/skills/tree/main/claude-code-mods/worktrees",
+  "repository": "https://github.com/matt-winfield/skills",
+  "license": "MIT",
+  "keywords": ["git", "worktree", "branches", "mod"],
+  "types": "./types/index.d.ts",
+  "userConfig": {
+    "summaryModel": {
+      "type": "string",
+      "title": "Summary model",
+      "description": "The model that writes each worktree's short summary from its commits and changes. An alias (haiku, sonnet) or a full model id.",
+      "default": "haiku"
+    },
+    "showSummaries": {
+      "type": "boolean",
+      "title": "Show summaries",
+      "description": "Ask the summary model for a 4-10 word summary of each worktree's branch. Off, no model calls are made.",
+      "default": true
+    }
+  }
+}
