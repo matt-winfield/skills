@@ -1,0 +1,19 @@
+{
+  "name": "matt-winfield-skills",
+  "owner": {
+    "name": "Matthew Winfield",
+    "url": "https://github.com/matt-winfield"
+  },
+  "metadata": {
+    "description": "Claude Code mods by Matthew Winfield: Sub Meter, subscription usage at the bottom right with a click-to-switch bar and a usage graph on hover"
+  },
+  "plugins": [
+    {
+      "name": "sub-meter",
+      "source": "./claude-code-mods/sub-meter",
+      "description": "Subscription usage at the bottom right: the 5-hour and weekly windows as a bar. In fullscreen, click to switch and hover for a usage graph.",
+      "version": "0.3.1",
+      "category": "productivity"
+    }
+  ]
+}
