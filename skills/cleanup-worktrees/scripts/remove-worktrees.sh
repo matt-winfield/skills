@@ -76,6 +76,8 @@ is_merged_elsewhere() {
 
 failed=0
 for target in "${targets[@]}"; do
+  # The report shortens the home folder to ~: take that spelling back, quoted or not.
+  [[ "$target" == "~" || "$target" == "~/"* ]] && target="$HOME${target#\~}"
   path="${target%/}"
   [[ -d "$path" ]] && path=$(cd "$path" && pwd -P)
   # Match the spelling git lists, in case of symlinks in the path.

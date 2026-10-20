@@ -32,7 +32,7 @@ If nothing is SAFE or STALE, say so and stop.
 
 ## 3. Remove
 
-Only what the user picked:
+Only what the user picked. Map each picked id to the path printed beside it in the report (a `~` in it stands for the home folder; the script expands it):
 
 ```bash
 bash <skill>/scripts/remove-worktrees.sh <path> <path> ...
