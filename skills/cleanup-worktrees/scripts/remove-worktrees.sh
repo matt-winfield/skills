@@ -31,11 +31,21 @@ git rev-parse --git-dir >/dev/null 2>&1 || { echo "Not in a git repository." >&2
 main=$(git worktree list --porcelain | sed -n '1s/^worktree //p')
 here=$(git rev-parse --show-toplevel 2>/dev/null || true)
 default=$(git -C "$main" symbolic-ref --short refs/remotes/origin/HEAD 2>/dev/null | sed 's|^origin/||' || true)
-# Without origin/HEAD, the first of main and master that exists (remote first).
+# Without origin/HEAD, main or master when exactly one of them exists; both is ambiguous.
+has() { git -C "$main" rev-parse --verify --quiet "$1^{commit}" >/dev/null; }
+if [[ -z "$default" ]]; then
+  found=""
+  for name in main master; do
+    if has "origin/$name" || has "$name"; then found+="$name "; fi
+  done
+  [[ "$found" == "main " || "$found" == "master " ]] && default="${found% }"
+fi
 ref=""
-for candidate in ${default:+"origin/$default" "$default"} origin/main main origin/master master; do
-  if git -C "$main" rev-parse --verify --quiet "$candidate^{commit}" >/dev/null; then ref=$candidate; break; fi
-done
+if [[ -n "$default" ]]; then
+  for candidate in "origin/$default" "$default"; do
+    if has "$candidate"; then ref=$candidate; break; fi
+  done
+fi
 [[ -n "$ref" ]] || { echo "Can't tell the default branch: set it with git remote set-head origin --auto." >&2; exit 1; }
 have_gh=0
 if command -v gh >/dev/null 2>&1 && gh auth status >/dev/null 2>&1; then have_gh=1; fi
