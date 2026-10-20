@@ -1,11 +1,11 @@
 ---
 name: worktree
-description: Start the task in a fresh git worktree on a new branch, set up like the main checkout (gitignored files from .worktreeinclude, then the Cursor, Paseo or Conductor setup script, else the package install), then do all the work there and finish with a pull request. Use when the user runs /worktree, or asks to work in a worktree, an isolated checkout, or in parallel with another agent without touching the current checkout.
+description: Start the task in a fresh git worktree on a new branch, set up like the main checkout (gitignored files from .worktreeinclude, then the Cursor, Paseo or Conductor setup script, else the package install), then do all the work there, leaving the original checkout untouched. Use when the user runs /worktree, or asks to work in a worktree, an isolated checkout, or in parallel with another agent without touching the current checkout.
 ---
 
 # worktree
 
-Do the rest of this task in a new git worktree, so the user's checkout (and any other agent working in it) is never touched. The work leaves the worktree as a pushed branch and a pull request. There is no "apply back" step: once the PR merges, the worktree is deleted (see the `cleanup-merged-worktrees` skill).
+Do the rest of this task in a new git worktree, so the user's checkout (and any other agent working in it) is never touched. There is no "apply back" step: the expected flow is that the user (or you, when they ask) raises a PR from the worktree's branch, and once it merges the worktree is deleted (see the `cleanup-worktrees` skill).
 
 `<skill>` below is the folder holding this SKILL.md.
 
@@ -42,13 +42,15 @@ Before going on, check you're in the right place: `git -C <WORKTREE_PATH> branch
 
 ## 3. Do the task
 
-Work as usual, inside the worktree. Commit as you go with clear messages. Don't edit, stage or commit anything in the original checkout.
+Work as usual, inside the worktree. Don't edit, stage or commit anything in the original checkout.
 
-## 4. Finish with a PR
+**Don't commit, push or open a PR unless the user asks.** Leave the changes uncommitted in the worktree, the same as working in their own checkout. Follow the user's (or the repo's) usual rules on committing if they say to commit.
+
+## 4. Hand back
 
 1. Run the project's checks (lint, typecheck, tests) in the worktree.
-2. Push: `git push -u origin <branch>`.
-3. Open a PR (`gh pr create`, or the `pr-and-iterate` skill to also watch CI and review comments).
-4. Tell the user the PR link and the worktree path. Leave the worktree in place: they may want to look at it or iterate on review comments. Once the PR merges, it can be removed with the `cleanup-merged-worktrees` skill or the `/worktrees` band in Claude Code.
+2. Tell the user what changed, the worktree path and its branch.
 
-Don't merge the branch into the user's checkout and don't delete the worktree unless the user asks.
+Only if the user asks for a PR: commit, push (`git push -u origin <branch>`) and open it (`gh pr create`, or the `pr-and-iterate` skill to also watch CI and review comments), then give them the link.
+
+Leave the worktree in place. Don't merge the branch into the user's checkout, and don't delete the worktree unless the user asks: once its PR merges, it can be removed with the `cleanup-worktrees` skill or the `/worktrees` band in Claude Code.

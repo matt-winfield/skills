@@ -18,16 +18,15 @@ npx skills update -g
 
 ## Skills
 
-| Name                                                                 | Description                                                                                  |
-| -------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
-| [cleanup-merged-worktrees](skills/cleanup-merged-worktrees/SKILL.md) | Report merged, upstream-deleted and idle worktrees, ask which to delete, then remove them.   |
-| [cleanup-worktrees](skills/cleanup-worktrees/SKILL.md)               | Delete git worktrees whose work is already in the default branch.                            |
-| [home-assistant](skills/home-assistant/SKILL.md)                     | Work with Home Assistant OS over SSH: `ha` CLI, states, history, logs, AppDaemon and config. |
-| [pr-and-iterate](skills/pr-and-iterate/SKILL.md)                     | Open a PR, watch CI and review comments, and push fixes until green.                         |
-| [react-composition](skills/react-composition/SKILL.md)               | Guides React component design toward composition and compound components over boolean props. |
-| [shadcn-components](skills/shadcn-components/SKILL.md)               | Add shadcn/ui components via the shadcn CLI instead of hand-writing them.                    |
-| [worktree](skills/worktree/SKILL.md)                                 | Do the task in a new, set-up git worktree and finish with a PR (like Cursor's `/worktree`).  |
-| [write-a-skill](skills/write-a-skill/SKILL.md)                       | Create a new skill in this repo, publish, and install via `npx skills`.                      |
+| Name                                                   | Description                                                                                   |
+| ------------------------------------------------------ | --------------------------------------------------------------------------------------------- |
+| [cleanup-worktrees](skills/cleanup-worktrees/SKILL.md) | Report merged, upstream-deleted and idle worktrees, ask which to delete, then remove them.    |
+| [home-assistant](skills/home-assistant/SKILL.md)       | Work with Home Assistant OS over SSH: `ha` CLI, states, history, logs, AppDaemon and config.  |
+| [pr-and-iterate](skills/pr-and-iterate/SKILL.md)       | Open a PR, watch CI and review comments, and push fixes until green.                          |
+| [react-composition](skills/react-composition/SKILL.md) | Guides React component design toward composition and compound components over boolean props.  |
+| [shadcn-components](skills/shadcn-components/SKILL.md) | Add shadcn/ui components via the shadcn CLI instead of hand-writing them.                     |
+| [worktree](skills/worktree/SKILL.md)                   | Do the task in a new git worktree, set up like the main checkout (like Cursor's `/worktree`). |
+| [write-a-skill](skills/write-a-skill/SKILL.md)         | Create a new skill in this repo, publish, and install via `npx skills`.                       |
 
 ## Claude Code mods
 

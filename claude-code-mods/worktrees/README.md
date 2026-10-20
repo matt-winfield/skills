@@ -54,7 +54,7 @@ claude plugin marketplace add matt-winfield/skills
 claude plugin install worktrees@matt-winfield-skills
 ```
 
-It works well with the [`worktree`](../../skills/worktree/SKILL.md) skill, which creates worktrees for agents, and [`cleanup-merged-worktrees`](../../skills/cleanup-merged-worktrees/SKILL.md), which clears out the merged ones.
+It works well with the [`worktree`](../../skills/worktree/SKILL.md) skill, which creates worktrees for agents, and [`cleanup-worktrees`](../../skills/cleanup-worktrees/SKILL.md), which clears out the merged ones.
 
 ## How it works
 
