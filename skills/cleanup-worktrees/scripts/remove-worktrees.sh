@@ -31,9 +31,12 @@ git rev-parse --git-dir >/dev/null 2>&1 || { echo "Not in a git repository." >&2
 main=$(git worktree list --porcelain | sed -n '1s/^worktree //p')
 here=$(git rev-parse --show-toplevel 2>/dev/null || true)
 default=$(git -C "$main" symbolic-ref --short refs/remotes/origin/HEAD 2>/dev/null | sed 's|^origin/||' || true)
-[[ -n "$default" ]] || default=main
-ref="origin/$default"
-git -C "$main" rev-parse --verify --quiet "$ref^{commit}" >/dev/null || ref="$default"
+# Without origin/HEAD, the first of main and master that exists (remote first).
+ref=""
+for candidate in ${default:+"origin/$default" "$default"} origin/main main origin/master master; do
+  if git -C "$main" rev-parse --verify --quiet "$candidate^{commit}" >/dev/null; then ref=$candidate; break; fi
+done
+[[ -n "$ref" ]] || { echo "Can't tell the default branch: set it with git remote set-head origin --auto." >&2; exit 1; }
 have_gh=0
 if command -v gh >/dev/null 2>&1 && gh auth status >/dev/null 2>&1; then have_gh=1; fi
 

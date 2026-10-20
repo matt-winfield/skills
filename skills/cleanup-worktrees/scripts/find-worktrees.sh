@@ -33,7 +33,13 @@ git rev-parse --git-dir >/dev/null 2>&1 || { echo "Not in a git repository." >&2
 here=$(git rev-parse --show-toplevel 2>/dev/null || true)
 
 default=$(git symbolic-ref --short refs/remotes/origin/HEAD 2>/dev/null | sed 's|^origin/||' || true)
-[[ -n "$default" ]] || default=main
+# Without origin/HEAD, the first of main and master that exists (remote first).
+if [[ -z "$default" ]]; then
+  for name in main master; do
+    if git rev-parse --verify --quiet "origin/$name^{commit}" >/dev/null || git rev-parse --verify --quiet "$name^{commit}" >/dev/null; then default=$name; break; fi
+  done
+fi
+[[ -n "$default" ]] || { echo "Can't tell the default branch: set it with git remote set-head origin --auto." >&2; exit 1; }
 fetched="not fetched"
 if (( fetch )); then
   if git fetch --prune origin --quiet 2>/dev/null; then fetched="fetched"; else fetched="fetch failed, using local refs"; fi
