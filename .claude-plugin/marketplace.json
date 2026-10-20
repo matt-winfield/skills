@@ -5,7 +5,7 @@
     "url": "https://github.com/matt-winfield"
   },
   "metadata": {
-    "description": "Claude Code mods by Matthew Winfield: Sub Meter, subscription usage at the bottom right with a click-to-switch bar and a usage graph on hover"
+    "description": "Claude Code mods by Matthew Winfield: Sub Meter (subscription usage with a usage graph) and Worktrees (your git worktrees above the prompt)"
   },
   "plugins": [
     {
@@ -13,6 +13,13 @@
       "source": "./claude-code-mods/sub-meter",
       "description": "Subscription usage at the bottom right: the 5-hour and weekly windows as a bar. In fullscreen, click to switch and hover for a usage graph.",
       "version": "0.3.1",
+      "category": "productivity"
+    },
+    {
+      "name": "worktrees",
+      "source": "./claude-code-mods/worktrees",
+      "description": "Your git worktrees above the prompt (/worktrees): branch, folder and a short Haiku summary of each, with open here, copy path and delete.",
+      "version": "0.1.0",
       "category": "productivity"
     }
   ]
