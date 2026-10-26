@@ -21,6 +21,7 @@ npx skills update -g
 | Name                                                   | Description                                                                                   |
 | ------------------------------------------------------ | --------------------------------------------------------------------------------------------- |
 | [cleanup-worktrees](skills/cleanup-worktrees/SKILL.md) | Report merged, upstream-deleted and idle worktrees, ask which to delete, then remove them.    |
+| [grilling](skills/grilling/SKILL.md)                   | Stress-test a plan through rounds of a few questions via the built-in question tool.          |
 | [home-assistant](skills/home-assistant/SKILL.md)       | Work with Home Assistant OS over SSH: `ha` CLI, states, history, logs, AppDaemon and config.  |
 | [pr-and-iterate](skills/pr-and-iterate/SKILL.md)       | Open a PR, watch CI and review comments, and push fixes until green.                          |
 | [react-composition](skills/react-composition/SKILL.md) | Guides React component design toward composition and compound components over boolean props.  |
