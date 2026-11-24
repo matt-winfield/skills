@@ -1,0 +1,39 @@
+{
+  "name": "prompt-queue",
+  "version": "0.1.0",
+  "description": "Queue messages you send while Claude works and send them one at a time when each turn finishes, Cursor-style. An editable, reorderable queue above the prompt, with disabled todo items, and a queue, steer or interrupt send mode.",
+  "author": {
+    "name": "Matthew Winfield",
+    "url": "https://github.com/matt-winfield"
+  },
+  "homepage": "https://github.com/matt-winfield/skills/tree/main/claude-code-mods/prompt-queue",
+  "repository": "https://github.com/matt-winfield/skills",
+  "license": "MIT",
+  "keywords": [
+    "queue",
+    "prompt",
+    "steer",
+    "todo",
+    "mod"
+  ],
+  "types": "./types/index.d.ts",
+  "userConfig": {
+    "defaultMode": {
+      "type": "string",
+      "title": "Default send mode",
+      "description": "What Enter does while Claude is working: queue (send after the turn), steer (inject after the next tool call), interrupt (stop the turn and send now). ctrl+x enter does the other of queue and steer once.",
+      "options": [
+        "queue",
+        "steer",
+        "interrupt"
+      ],
+      "default": "queue"
+    },
+    "showModeInFooter": {
+      "type": "boolean",
+      "title": "Show send mode in footer",
+      "description": "Show the current send mode (queue, steer or interrupt) among the mode labels in the footer under the prompt",
+      "default": true
+    }
+  }
+}
